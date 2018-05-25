@@ -10,7 +10,7 @@
 
 static char *readLineFromFile( FILE *fp );
 
-static int parseFile( const char *cpFile );
+static int parseFile( Spdr3dModel& model, const char *cpFile );
 
 static int parseFileHeader( FILE *fp );
 static int parseFileLine( Spdr3dModel& model, FILE *fp, int iOperationPosition );
@@ -272,11 +272,14 @@ static int parseOperation( Spdr3dOperation& operation, char *cpText ) {
 
 int main( int argc, char* argv[] ) {
 
-    //char caSrc[] = "<object><facet><point> 1, 2, 3</point><point> 4, 5, 6</point><point>7, 8, 9</point><point>10, 11.234234, 12 </point></facet></object>";
+    if( argc < 2 ) {
+        printf( "The required argument is missing!\nUse: %s <source.csv>.\nExiting...", argv[0] );
+        return 0;
+    }
 
     Spdr3dModel model;
 
-    parseFile( model, "src.txt" );
+    parseFile( model, argv[1] );
 
     Spdr3dModel::display( model, argc, argv );
     

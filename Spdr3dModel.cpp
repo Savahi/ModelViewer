@@ -129,7 +129,7 @@ static void displayFacet( Spdr3dFacet& facet ) {
 	glBegin(GL_POLYGON);
 	glColor3f( 1.0, 1.0, 1.0 );
     for( std::vector<Spdr3dVertex>::iterator ve = facet.mVertices.begin() ; ve != facet.mVertices.end() ; ++ve ) {
-    	std::cout << "x=" << (*ve).mX << ", y=" << (*ve).mY << ", z=" << (*ve).mZ << "\n";
+    	// std::cout << "x=" << (*ve).mX << ", y=" << (*ve).mY << ", z=" << (*ve).mZ << "\n";
 		glVertex3f(  (*ve).mX, (*ve).mY, (*ve).mZ );
     }
 	glEnd();
