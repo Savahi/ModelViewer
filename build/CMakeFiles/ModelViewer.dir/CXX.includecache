@@ -1,0 +1,36 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/user/Desktop/spider/ModelViewer/src/ModelViewer.cpp
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+Spdr3dModel.hpp
+/home/user/Desktop/spider/ModelViewer/src/Spdr3dModel.hpp
+
+/home/user/Desktop/spider/ModelViewer/src/Spdr3dModel.cpp
+vector
+-
+iostream
+-
+math.h
+-
+GL/glut.h
+-
+Spdr3dModel.hpp
+/home/user/Desktop/spider/ModelViewer/src/Spdr3dModel.hpp
+
+/home/user/Desktop/spider/ModelViewer/src/Spdr3dModel.hpp
+vector
+-
+iostream
+-
+

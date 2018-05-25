@@ -1,0 +1,1 @@
+/usr/bin/c++       CMakeFiles/ModelViewer.dir/Spdr3dModel.cpp.o CMakeFiles/ModelViewer.dir/ModelViewer.cpp.o  -o ModelViewer -rdynamic -lglut -lGLU -lGL -lSM -lICE -lX11 -lXext 

@@ -3,19 +3,19 @@
 #include <string.h>
 #include "Spdr3dModel.hpp"
 
-#define MODEL_PARSER_MAX_TAG_NAME 40
-#define MODEL_PARSER_MAX_POINT_BUFFER 80
+#define SPDRMV_MAX_TAG_NAME 40
+#define SPDRMV_MAX_POINT_BUFFER 80
 
-#define MODEL_PARSER_READ_BUFFER 512
+#define SPDRMV_READ_BUFFER 512
 
 static char *readLineFromFile( FILE *fp );
 
 static int parseFile( const char *cpFile );
 
 static int parseFileHeader( FILE *fp );
-static int parseFileLine( FILE *fp, int iModelPosition );
+static int parseFileLine( Spdr3dModel& model, FILE *fp, int iOperationPosition );
 
-static int parseModel( Spdr3dModel& model, char *cpText );
+static int parseOperation( Spdr3dOperation& operation, char *cpText );
 
 static int findTagContent( char *cpText, const char *cpTagName, int iStartAt, int *ipStart, int *ipEnd );
 
@@ -27,11 +27,11 @@ static char *readLineFromFile( FILE *fp ) {
     char cRead;
     char *cpAllocated;
 
-    cpAllocated = (char*)malloc( MODEL_PARSER_READ_BUFFER );
+    cpAllocated = (char*)malloc( SPDRMV_READ_BUFFER );
     if( cpAllocated == NULL ) {
         return NULL;
     }
-    nAllocated = MODEL_PARSER_READ_BUFFER;
+    nAllocated = SPDRMV_READ_BUFFER;
     iAllocatedPtr = 0;
 
     for( ; ; ) {
@@ -41,14 +41,14 @@ static char *readLineFromFile( FILE *fp ) {
         }
         if( iAllocatedPtr >= nAllocated-1 ) {
             if( nAllocated == 0 ) {
-                cpAllocated = (char*)malloc( MODEL_PARSER_READ_BUFFER );
+                cpAllocated = (char*)malloc( SPDRMV_READ_BUFFER );
             } else {
-                cpAllocated = (char*)realloc( cpAllocated, nAllocated + MODEL_PARSER_READ_BUFFER );
+                cpAllocated = (char*)realloc( cpAllocated, nAllocated + SPDRMV_READ_BUFFER );
             }
             if( cpAllocated == NULL ) {
                 return NULL;
             }
-            nAllocated += MODEL_PARSER_READ_BUFFER;
+            nAllocated += SPDRMV_READ_BUFFER;
         }
         cpAllocated[iAllocatedPtr] = cRead;
         iAllocatedPtr++;
@@ -62,11 +62,11 @@ static char *readLineFromFile( FILE *fp ) {
 
 
 static int findTagContent( char *cpText, const char *cpTagName, int iStartAt, int *ipStart, int *ipEnd ) {
-    char caOpenTag[MODEL_PARSER_MAX_TAG_NAME+3];
-    char caCloseTag[MODEL_PARSER_MAX_TAG_NAME+4];
+    char caOpenTag[SPDRMV_MAX_TAG_NAME+3];
+    char caCloseTag[SPDRMV_MAX_TAG_NAME+4];
     int iFound, iOpenTagStart, iOpenTagEnd, iCloseTagStart, iCloseTagEnd;
 
-    if( strlen(cpTagName) > MODEL_PARSER_MAX_TAG_NAME ) {
+    if( strlen(cpTagName) > SPDRMV_MAX_TAG_NAME ) {
         return 0;
     }
 
@@ -122,7 +122,7 @@ static int findSubstring( char *cpText, const char *cpSubstring, int iStartAt, i
 
 
 static int parseFileHeader( FILE *fp ) {
-    int i, iStatus, iStart, iModelPosition=-1;
+    int i, iStatus, iStart, iOperationPosition=-1;
     char *cpHeader;
 
     cpHeader = readLineFromFile(fp);
@@ -132,21 +132,21 @@ static int parseFileHeader( FILE *fp ) {
 
     iStatus = findSubstring( cpHeader, "model", 0, &iStart, NULL );
     if( iStatus == 1 ) {
-        iModelPosition = 0;
+        iOperationPosition = 0;
         for( i = 0 ; i < iStart ; i++ ) {
             if( cpHeader[i] == ';' ) {
-                iModelPosition++;
+                iOperationPosition++;
             }
         }
     }
 
     free(cpHeader);
-    return iModelPosition;
+    return iOperationPosition;
 }
 
 
-static int parseFileLine( FILE *fp, int iModelPosition ) {
-    int i, iLineLen, iPosition, iModelStart;
+static int parseFileLine( Spdr3dModel& model, FILE *fp, int iOperationModelPosition ) {
+    int i, iLineLen, iPosition, iOperationModelStart;
     char *cpLine;
 
     cpLine = readLineFromFile(fp);
@@ -157,7 +157,7 @@ static int parseFileLine( FILE *fp, int iModelPosition ) {
 
     iPosition = 0;
     for( i = 0 ; i < iLineLen ; i++ ) {
-        if( iPosition == iModelPosition ) {
+        if( iPosition == iOperationModelPosition ) {
             break;
         }
         if( cpLine[i] == ';' ) {
@@ -167,7 +167,7 @@ static int parseFileLine( FILE *fp, int iModelPosition ) {
     if( i == iLineLen ) {
         return -1;
     }
-    iModelStart = i;
+    iOperationModelStart = i;
 
     for( ; i < iLineLen ; i++ ) {
         if( cpLine[i] == ';' ) {
@@ -175,31 +175,31 @@ static int parseFileLine( FILE *fp, int iModelPosition ) {
             break;
         }
     }
-    printf( "Model found: %s", &cpLine[iModelStart] );
+    printf( "Operation model found: %s", &cpLine[iOperationModelStart] );
 
-    Spdr3dModel model;
-    parseModel( model, &cpLine[iModelStart] );
-    model.display(); 
+    Spdr3dOperation operation;
+    parseOperation( operation, &cpLine[iOperationModelStart] );
+    model.add( operation );
 
     free(cpLine);
     return 0;
 }
 
 
-static int parseFile( const char *cpFile ) {
+static int parseFile( Spdr3dModel& model, const char *cpFile ) {
 
     //char caText[] = "<object><facet><point> 1, 2, 3</point><point> 4, 5, 6</point><point>7, 8, 9</point><point>10, 11.234234, 12 </point></facet></object>";
 
     FILE *fp;
-    int iStatus, iModelPosition;
+    int iStatus, iOperationModelPosition;
 
     fp = fopen( cpFile, "rb" );
     if( fp != NULL ) {
-        iModelPosition = parseFileHeader( fp );
-        if( iModelPosition >= 0 ) {
+        iOperationModelPosition = parseFileHeader( fp );
+        if( iOperationModelPosition >= 0 ) {
 
             while(1) {
-                iStatus = parseFileLine( fp, iModelPosition );
+                iStatus = parseFileLine( model, fp, iOperationModelPosition );
                 if( iStatus == -1 ) {
                     break;
                 }
@@ -212,12 +212,12 @@ static int parseFile( const char *cpFile ) {
 }
 
 
-static int parseModel( Spdr3dModel& model, char *cpText ) {
+static int parseOperation( Spdr3dOperation& operation, char *cpText ) {
 
     int iStatus, iObjectStart, iObjectEnd, iFacetStart, iFacetEnd, iPointStart, iPointEnd;
 
     int iPointIndex, nPointsBuffered;
-    char caPointBuffer[MODEL_PARSER_MAX_POINT_BUFFER];
+    char caPointBuffer[SPDRMV_MAX_POINT_BUFFER];
     float fX, fY, fZ;
 
     iObjectEnd = 0;
@@ -245,7 +245,7 @@ static int parseModel( Spdr3dModel& model, char *cpText ) {
                     break;
                 }
 
-                for( iPointIndex = iPointStart, nPointsBuffered = 0 ; iPointIndex <= iPointEnd && nPointsBuffered < MODEL_PARSER_MAX_POINT_BUFFER ; ) {
+                for( iPointIndex = iPointStart, nPointsBuffered = 0 ; iPointIndex <= iPointEnd && nPointsBuffered < SPDRMV_MAX_POINT_BUFFER ; ) {
                     if( cpText[iPointIndex] == ',' ) {
                         caPointBuffer[ nPointsBuffered ] = ' ';
                     } else {
@@ -264,17 +264,22 @@ static int parseModel( Spdr3dModel& model, char *cpText ) {
             }
             object.add(facet);
         }
-        model.add(object);
+        operation.add(object);
     }
     return 0;
 }
 
 
-int main( int argc, char **argv ) {
+int main( int argc, char* argv[] ) {
 
     //char caSrc[] = "<object><facet><point> 1, 2, 3</point><point> 4, 5, 6</point><point>7, 8, 9</point><point>10, 11.234234, 12 </point></facet></object>";
 
-    parseFile( "3d.txt" );
+    Spdr3dModel model;
+
+    parseFile( model, "src.txt" );
+
+    Spdr3dModel::display( model, argc, argv );
+    
     return 0;
 }
 

@@ -270,7 +270,7 @@ static int parseOperation( Spdr3dOperation& operation, char *cpText ) {
 }
 
 
-int main( int argc, char **argv ) {
+int main( int argc, char* argv[] ) {
 
     //char caSrc[] = "<object><facet><point> 1, 2, 3</point><point> 4, 5, 6</point><point>7, 8, 9</point><point>10, 11.234234, 12 </point></facet></object>";
 
@@ -278,7 +278,7 @@ int main( int argc, char **argv ) {
 
     parseFile( model, "src.txt" );
 
-    Spdr3dModel::display( model );
+    Spdr3dModel::display( model, argc, argv );
     
     return 0;
 }
