@@ -57,12 +57,29 @@ class Spdr3dObject {
 		}
 };
 
-class Spdr3dModel {
+class Spdr3dOperation {
 	public:
 		std::vector<Spdr3dObject> mObjects; 
 
 		int add( Spdr3dObject& object ) {
 			this->mObjects.push_back( object );
+		}
+
+		Spdr3dOperation() {
+			std::cout << "Constructor for Spdr3dOperation\n";
+		}
+
+		~Spdr3dOperation() {
+			std::cout << "Destructor for Spdr3dOperation\n";
+		}
+};
+
+class Spdr3dModel {
+	public:
+		std::vector<Spdr3dOperation> mOperations; 
+
+		int add( Spdr3dOperation& operation ) {
+			this->mOperations.push_back( operation );
 		}
 
 		Spdr3dModel() {
@@ -72,6 +89,7 @@ class Spdr3dModel {
 		~Spdr3dModel() {
 			std::cout << "Destructor for Spdr3dModel\n";
 		}
-
-		void display( void );
+		
+		static void display( Spdr3dModel& model );
 };
+

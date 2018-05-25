@@ -1,10 +1,10 @@
-all: 3d
+all: SpdrModelViewer
 
-3d: 3d.o Spdr3dModel.o
-	g++ 3d.o Spdr3dModel.o -o 3d -lGL -lGLU -lglut
+SpdrModelViewer: SpdrModelViewer.o Spdr3dModel.o
+	g++ SpdrModelViewer.o Spdr3dModel.o -o SpdrModelViewer -lGL -lGLU -lglut
 
-3d.o: 3d.cpp
-	g++ -c 3d.cpp
+SpdrModelViewer.o: SpdrModelViewer.cpp
+	g++ -c SpdrModelViewer.cpp
 
 Spdr3dModel.o: Spdr3dModel.cpp
 	g++ -c Spdr3dModel.cpp

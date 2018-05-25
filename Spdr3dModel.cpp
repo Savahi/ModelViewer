@@ -7,35 +7,89 @@
 
 #include "Spdr3dModel.hpp"
 
-static void displayViewer( void );
+static void displayCoordsInitializer( Spdr3dModel& model );
+
+static void displayModel();
+static void displayFacet( Spdr3dFacet& facet );
+
+static float f_ModelW, f_ModelL, f_ModelH, f_ModelMinX, f_ModelMaxX, f_ModelMinY, f_ModelMaxY, f_ModelMinZ, f_ModelMaxZ;
+static Spdr3dModel *o_Model;
+
+
 static void displayKeys( int key, int x, int y );
 static void displayReshape( GLsizei width, GLsizei height );
 
 
-void Spdr3dModel::display( void ) {
+void Spdr3dModel::display( Spdr3dModel& model ) {
 	int argc=0;
 	char **argv=NULL;
   	glutInit(&argc,argv); // Initialize GLUT and process user parameters
 
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH); // Request double buffered true color window with Z-buffer
+	displayCoordsInitializer( model );
+  	o_Model = &model;
 
-  glutInitWindowSize(640, 480);   // Set the window's initial width & height
-  glutInitWindowPosition(50, 50); // Position the window's initial top-left corner  
-  glutCreateWindow("How the Building has being Built...");
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH); // Request double buffered true color window with Z-buffer
 
-  glEnable(GL_DEPTH_TEST); // Enable Z-buffer depth test
+	glutInitWindowSize(640, 480);   // Set the window's initial width & height
+	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner  
+	glutCreateWindow("How the Building has being Built...");
 
-  // Callback functions
-  glutDisplayFunc(displayViewer);
-  glutSpecialFunc(displayKeys);
-  glutReshapeFunc(displayReshape);       // Register callback handler for window re-size event
+	glEnable(GL_DEPTH_TEST); // Enable Z-buffer depth test
 
-  //  Pass control to GLUT for events
-  glutMainLoop();
+	// Callback functions
+	glutDisplayFunc(displayModel);
+	glutSpecialFunc(displayKeys);
+	glutReshapeFunc(displayReshape);       // Register callback handler for window re-size event
+
+	//  Pass control to GLUT for events
+	glutMainLoop();
 }
 
 
-static void displayViewer( void ) {
+static void displayCoordsInitializer( Spdr3dModel& model ) {
+
+	bool bFirst = false;
+	for( std::vector<Spdr3dOperation>::iterator  op = model.mOperations.begin() ; op != model.mOperations.end() ; ++op ) {
+	    for( std::vector<Spdr3dObject>::iterator ob = (*op).mObjects.begin() ; ob != (*op).mObjects.end() ; ++ob ) {
+		    for( std::vector<Spdr3dFacet>::iterator fa = (*ob).mFacets.begin() ; fa != (*ob).mFacets.end() ; ++fa ) {	
+			    for( std::vector<Spdr3dVertex>::iterator ve = (*fa).mVertices.begin() ; ve != (*fa).mVertices.end() ; ++ve ) {
+			    	float x = (*ve).mX;
+			    	float y = (*ve).mY;
+			    	float z = (*ve).mZ;
+
+			    	if( bFirst ) {
+			    		f_ModelMinX = f_ModelMaxX = x;
+			    		f_ModelMinY = f_ModelMaxY = y;
+			    		f_ModelMinZ = f_ModelMaxZ = z;
+			    		bFirst = false;
+			    	} else {
+			    		if( x < f_ModelMinX ) {
+			    			f_ModelMinX = x;
+			    		}
+			    		if( x > f_ModelMaxX ) {
+			    			f_ModelMaxX = y;
+			    		}
+			    		if( y < f_ModelMinY ) {
+			    			f_ModelMinY = y;
+			    		}
+			    		if( y > f_ModelMaxY ) {
+			    			f_ModelMaxY = y;
+			    		}
+			    		if( z < f_ModelMinZ ) {
+			    			f_ModelMinZ = z;
+			    		}
+			    		if( z > f_ModelMaxZ ) {
+			    			f_ModelMaxZ = z;
+			    		}
+			    	}
+			    }
+			}
+		}
+	}
+}
+
+
+static void displayModel( void ) {
  
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);   //  Clear screen and Z-buffer
 	
@@ -44,16 +98,15 @@ static void displayViewer( void ) {
  	glLoadIdentity(); // Reset transformations
   
 	glPushMatrix();
+
+    for( std::vector<Spdr3dOperation>::iterator  op = (*o_Model).mOperations.begin() ; op != (*o_Model).mOperations.end() ; ++op ) {
+        for( std::vector<Spdr3dObject>::iterator ob = (*op).mObjects.begin() ; ob != (*op).mObjects.end() ; ++ob ) {
+	        for( std::vector<Spdr3dFacet>::iterator fa = (*ob).mFacets.begin() ; fa != (*ob).mFacets.end() ; ++fa ) {
+	        	displayFacet( *fa );
+			}
+		}
+    }	
 /*
-	static int displayModel( Spdr3dModel& model ) {
-
-	    for( auto& object : model ) {
-	        for( auto& facet : object ) {
-	            for( auto& vertex : facet ) {
-
-	            }
-	        }
-	    }
 	}
 
 	glTranslatef( (constructionW+0.5)/2.0, 0.0, (constructionL+0.5)/2.0 );  
@@ -76,6 +129,14 @@ static void displayViewer( void ) {
 	glPopMatrix();
 	glFlush();
 	glutSwapBuffers(); 
+}
+
+
+static void displayFacet( Spdr3dFacet& facet ) {
+
+    for( std::vector<Spdr3dVertex>::iterator ve = facet.mVertices.begin() ; ve != facet.mVertices.end() ; ++ve ) {
+    	std::cout << "x=" << (*ve).mX << ", y=" << (*ve).mY << ", z=" << (*ve).mZ << "\n";
+    }
 }
 
 
