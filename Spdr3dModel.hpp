@@ -67,7 +67,7 @@ class Spdr3dOperation {
 		std::vector<Spdr3dObject> mObjects; 
 		
 		tm tmActualStart, tmActualFinish, tmAsapStart, tmAsapFinish;
-		time_t mActualStart, mActualFinish, mAsapStart, mAsapFinish;
+		time_t tActualStart, tActualFinish, tAsapStart, tAsapFinish;
 		bool bDatesInitialized;
 
 		int iProgress;

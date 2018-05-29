@@ -7,11 +7,11 @@
 
 #include "Spdr3dModel.hpp"
 
-static void displayCoordsInitializer( void );
+static void displayInitializer( void );
 
 static void displayFunc();
 static void displayAxis( void );
-static void displayFacet( Spdr3dFacet& facet, int iProgress=100 );
+static void displayFacet( Spdr3dFacet& facet, float fProgress=100 );
 
 static void displayKeys( int key, int x, int y );
 static void displayReshape( GLsizei width, GLsizei height );
@@ -19,11 +19,25 @@ static void displayReshape( GLsizei width, GLsizei height );
 static float f_ModelW, f_ModelL, f_ModelH, f_ModelMinX, f_ModelMaxX, f_ModelMinY, f_ModelMaxY, f_ModelMinZ, f_ModelMaxZ;
 static int i_ModelRotateX, i_ModelRotateY;
 static Spdr3dModel *o_Model;
+static time_t t_TimeNow;
 static time_t t_ModelTime;
+static time_t t_ModelStart, t_ModelFinish; 
 
-static void displayCoordsInitializer( void ) {
-	bool bFirst = true;
+static void displayInitializer( void ) {
+
+  	i_ModelRotateX = 15;
+  	i_ModelRotateY = 15;
+  	t_TimeNow = t_ModelTime = time(0);
+	t_ModelStart = t_ModelFinish = t_ModelTime;
+	
+	bool bFirst = true;	
 	for( std::vector<Spdr3dOperation>::iterator  op = o_Model->mOperations.begin() ; op != o_Model->mOperations.end() ; ++op ) {
+		if( op->tActualStart < t_ModelStart ) {
+			t_ModelStart = op->tActualStart;
+		}
+		if( op->tActualFinish > t_ModelStart ) {
+			t_ModelFinish = op->tActualFinish;
+		}
 	    for( std::vector<Spdr3dObject>::iterator ob = (*op).mObjects.begin() ; ob != (*op).mObjects.end() ; ++ob ) {
 		    for( std::vector<Spdr3dFacet>::iterator fa = (*ob).mFacets.begin() ; fa != (*ob).mFacets.end() ; ++fa ) {	
 			    for( std::vector<Spdr3dVertex>::iterator ve = (*fa).mVertices.begin() ; ve != (*fa).mVertices.end() ; ++ve ) {
@@ -70,11 +84,7 @@ static void displayCoordsInitializer( void ) {
 void Spdr3dModel::display( int argc, char* argv[] ) {
   	o_Model = this;
 
-	displayCoordsInitializer();
-
-  	i_ModelRotateX = 15;
-  	i_ModelRotateY = 15;
-  	t_ModelTime = time(0);
+	displayInitializer();
 
   	glutInit( &argc, argv ); // Initialize GLUT and process user parameters
 
@@ -84,9 +94,9 @@ void Spdr3dModel::display( int argc, char* argv[] ) {
 	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner  
 	glutCreateWindow("How the Building has being Built...");
 
-	glEnable(GL_DEPTH_TEST); // Enable Z-buffer depth test
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable( GL_DEPTH_TEST ); // Enable Z-buffer depth test
+	glEnable( GL_BLEND );
+	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 
 	// Callback functions
 	glutDisplayFunc(displayFunc);
@@ -125,22 +135,21 @@ static void displayFunc( void ) {
 	*/
 
     for( std::vector<Spdr3dOperation>::iterator  op = (*o_Model).mOperations.begin() ; op != (*o_Model).mOperations.end() ; ++op ) {    	
-    	time_t tmStart = (*op).mActualStart;
-    	time_t tmFinish = (*op).mActualFinish;
-    	double dAfterStart = difftime( tmStart, t_ModelTime ); 
-    	double dBeforeFinish = difftime( t_ModelTime, tmFinish ); 
-    	int iProgress;
-    	if( dAfterStart < 0.0 ) {
-    		iProgress = 0;
-    	} else if( dBeforeFinish < 0.0 ) {
-    		iProgress = 100;
+    	time_t tStart = op->tActualStart;
+    	time_t tFinish = op->tActualFinish;
+    	double dAfterStart = difftime( t_ModelTime, tStart  );
+    	double dAfterFinish = difftime( t_ModelTime, tFinish ); 
+    	float fProgress;
+    	if( !(dAfterStart > 0.0) ) {
+    		fProgress = 0;
+    	} else if( !(dAfterFinish < 0.0) ) {
+    		fProgress = 100;
     	} else {
-    		iProgress = int( (dAfterStart*100) / difftime( tmStart, tmFinish ) );
+    		fProgress = dAfterStart / (dAfterStart-dAfterFinish);	
     	}
-
         for( std::vector<Spdr3dObject>::iterator ob = (*op).mObjects.begin() ; ob != (*op).mObjects.end() ; ++ob ) {
 	        for( std::vector<Spdr3dFacet>::iterator fa = (*ob).mFacets.begin() ; fa != (*ob).mFacets.end() ; ++fa ) {
-	        	displayFacet( *fa, iProgress );
+	        	displayFacet( *fa, fProgress );
 			}
 		}
     }	
@@ -151,9 +160,9 @@ static void displayFunc( void ) {
 }
 
 
-static void displayFacet( Spdr3dFacet& facet, int iProgress ) {
+static void displayFacet( Spdr3dFacet& facet, float fProgress ) {
 	glBegin(GL_POLYGON);
-	glColor4f( 1.0f, 1.0f, 1.0f, 0.25f );
+	glColor4f( 1.0f, 1.0f, 1.0f, fProgress );
     for( std::vector<Spdr3dVertex>::iterator ve = facet.mVertices.begin() ; ve != facet.mVertices.end() ; ++ve ) {
     	// std::cout << "x=" << (*ve).mX << ", y=" << (*ve).mY << ", z=" << (*ve).mZ << "\n";
 		glVertex3f(  (*ve).mX, (*ve).mY, (*ve).mZ );
@@ -183,25 +192,31 @@ static void displayKeys( int key, int x, int y ) {
  
 	switch(key) {
 		case GLUT_KEY_RIGHT:
-		  i_ModelRotateY += 5;
-		  break;
+			i_ModelRotateY += 5;
+			break;
 		case GLUT_KEY_LEFT:
-		  i_ModelRotateY -= 5;
-		  break;
+			i_ModelRotateY -= 5;
+			break;
 		case GLUT_KEY_UP:
-		  i_ModelRotateX += 5;
-		  break;
+			i_ModelRotateX += 5;
+			break;
 		case GLUT_KEY_DOWN:
-		  i_ModelRotateX -= 5;
-		  break;
-		/*		 
+			i_ModelRotateX -= 5;
+			break;
 		case GLUT_KEY_PAGE_UP:
-		  constructionStep = (constructionStep < constructionStepsNum-1) ? (constructionStep+1) : constructionStepsNum-1;
-		  break;
+			if( t_ModelTime < t_ModelFinish ) {
+				t_ModelTime += (t_ModelFinish - t_ModelStart)/20;
+			} else if( t_ModelTime < t_TimeNow ) {
+				t_ModelTime = t_TimeNow;
+			}
+			break;
 		case GLUT_KEY_PAGE_DOWN:
-		  constructionStep = (constructionStep > 0) ? (constructionStep-1) : 0;
-		  break;
-		*/
+			if( t_ModelTime > t_ModelFinish ) {
+				t_ModelTime = t_ModelFinish;
+			} else if( t_ModelTime > t_ModelStart ) {
+				t_ModelTime -= (t_ModelFinish - t_ModelStart)/20;
+			}
+			break;
 	} 
   //  Request display update
   glutPostRedisplay();
@@ -232,23 +247,21 @@ static void displayReshape( GLsizei width, GLsizei height ) {
 }
 
 
-#include <regex>
-
 static int parseSpdrDate( char *cpDatetime, struct tm& tmDatetime ) {
-    std::string s( cpDatetime );
-    std::smatch m;
-    std::regex e( "([0-9][0-9])\\.([0-9][0-9])\\.([0-9][0-9]) +([0-9][0-9])\\:([0-9][0-9])", std::regex_constants::basic );
-
-    std::regex_match( s, m, e );
-    if( m.size() != 6 ) {
-        return -1;
+	int iStatus;
+    for( int i = 0 ; cpDatetime[i] != '\x0' ; i++ ) {
+    	if( cpDatetime[i] == '.' || cpDatetime[i] == ':' ) {
+    		cpDatetime[i] = ' ';
+    	}
     }
-    tmDatetime.tm_mday = std::stoi(m[1]);
-    tmDatetime.tm_mon = std::stoi(m[2]);
-    tmDatetime.tm_year = std::stoi(m[3]);
-    tmDatetime.tm_hour = std::stoi(m[4]);
-    tmDatetime.tm_min = std::stoi(m[5]);
+	iStatus = sscanf( cpDatetime, "%d %d %d %d %d", &tmDatetime.tm_mday, &tmDatetime.tm_mon, &tmDatetime.tm_year, &tmDatetime.tm_hour, &tmDatetime.tm_min );
+    if( iStatus != 5 ) { 
+    	return -1;
+    }
+    tmDatetime.tm_year -= 1900;
+    tmDatetime.tm_mon -= 1;
     tmDatetime.tm_sec = 0;
+	tmDatetime.tm_wday = tmDatetime.tm_yday = tmDatetime.tm_isdst = 0;
     return 0;
 }
 
@@ -259,21 +272,21 @@ int Spdr3dOperation::parseSpdrDates( char *cpActualStart, char *cpActualFinish, 
 	if( iStatus == -1 ) {
 		return -1;
 	}
-	this->mActualStart = mktime( &(this->tmActualStart) );
+	this->tActualStart = mktime( &(this->tmActualStart) );
 	iStatus = parseSpdrDate( cpActualFinish, this->tmActualFinish );
 	if( iStatus == -1 ) {
 		return -1;
 	}
-	this->mActualFinish = mktime( &(this->tmActualFinish) );
+	this->tActualFinish = mktime( &(this->tmActualFinish) );
 	iStatus = parseSpdrDate( cpAsapStart, this->tmAsapStart );
 	if( iStatus == -1 ) {
 		return -1;
 	}
-	this->mAsapStart = mktime( &(this->tmAsapStart) );
+	this->tAsapStart = mktime( &(this->tmAsapStart) );
 	iStatus = parseSpdrDate( cpAsapFinish, this->tmAsapFinish );
 	if( iStatus == -1 ) {
 		return -1;
 	}
-	this->mAsapFinish = mktime( &(this->tmAsapFinish) );
+	this->tAsapFinish = mktime( &(this->tmAsapFinish) );
 	this->bDatesInitialized = true;
 }

@@ -16,7 +16,6 @@ static int parseFileHeader( FILE *fp );
 static int getPosByColumnName( char *cpBuffer, const char *cpColumn );
 
 static int parseFileLine( Spdr3dModel& model, FILE *fp );
-static int parseDatetimeStr( char *cpDatetime, tm& tmDatetime );
 static int getValuesByColumnPos( char *cpLine, int *ipOperation, int *ipFactStart, int *ipFactFin, int *ipAsapStart, int *ipAsapFin );
 
 static int parseOperationModel( Spdr3dOperation& operation, char *cpText );
@@ -277,7 +276,6 @@ static int parseOperationModel( Spdr3dOperation& operation, char *cpText ) {
         if( iStatus == 0 ) {
             break;
         }
-        puts("OBJECT FOUND!");
         Spdr3dObject object;
 
         iFacetEnd = iObjectStart;
@@ -286,7 +284,6 @@ static int parseOperationModel( Spdr3dOperation& operation, char *cpText ) {
             if( iStatus == 0 ) {
                 break;
             }
-            puts("FACET FOUND!");
             Spdr3dFacet facet;
 
             iPointEnd = iFacetStart;
