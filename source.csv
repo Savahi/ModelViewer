@@ -1,2 +1,2 @@
-Title 1 ; Title 2 ; ; ; Model
-some text ; some text ; ; ; <object><facet><point> -1, 0, -1</point><point> 1, 0, -1</point><point>1, 0, 1</point><point>-1, 0, 1</point></facet><facet><point> -1, -1, -1</point><point> 1, -1, -1</point><point>1, 1, -1</point><point>-1, 1, -1</point></facet></object> 
+Title 1 ; Title 2 ; FactStart ; FactFin ; AsapStart ; AsapFin ; Model
+some text ; some text ; 09.01.2007  08:00 ; 10.01.2007  16:00 ; 30.01.2007  08:00 ; 31.01.2007  10:00 ; <object><facet><point>-1,0,-1</point><point>1,0,-1</point><point>1,0,1</point><point>-1,0,1</point></facet><facet><point>0,2,-1</point><point>0,2,1</point><point>0,0,1</point><point>0,0,-1</point></facet></object> 

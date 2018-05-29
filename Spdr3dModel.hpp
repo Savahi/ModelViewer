@@ -1,5 +1,7 @@
 #include <vector>
 #include <iostream>
+#include <string>
+#include <ctime>
 
 class Spdr3dVertex {
 	public:
@@ -63,14 +65,19 @@ class Spdr3dObject {
 class Spdr3dOperation {
 	public:
 		std::vector<Spdr3dObject> mObjects; 
+		
+		struct tm tmFactStart, tmFactFin, tmAsapStart, tmAsapFin;
+		bool bTm;
 
 		int add( Spdr3dObject& object ) {
 			this->mObjects.push_back( object );
 			return 0;
 		}
 
+		int addSpdrDates( char *cpFactStart, char *cpFactFin, char *cpAsapStart, char *cpAsapFin );
+
 		Spdr3dOperation() {
-			; // std::cout << "Constructor for Spdr3dOperation\n";
+			this->bTm = false; // std::cout << "Constructor for Spdr3dOperation\n";
 		}
 
 		~Spdr3dOperation() {
@@ -86,6 +93,10 @@ class Spdr3dModel {
 			this->mOperations.push_back( operation );
 			return 0;
 		}
+
+		bool mAxis;
+		float mGrid;
+		float mXMargin, mYMargin, mZMargin;
 
 		Spdr3dModel() {
 			; // std::cout << "Constructor for Spdr3dModel\n";
