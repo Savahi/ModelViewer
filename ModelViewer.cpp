@@ -19,7 +19,7 @@ static int parseFileLine( Spdr3dModel& model, FILE *fp );
 static int parseDatetimeStr( char *cpDatetime, tm& tmDatetime );
 static int getValuesByColumnPos( char *cpLine, int *ipOperation, int *ipFactStart, int *ipFactFin, int *ipAsapStart, int *ipAsapFin );
 
-static int parseOperation( Spdr3dOperation& operation, char *cpText );
+static int parseOperationModel( Spdr3dOperation& operation, char *cpText );
 
 static int findTagContent( char *cpText, const char *cpTagName, int iStartAt, int iStopAt, int *ipStart, int *ipEnd );
 
@@ -194,8 +194,8 @@ static int parseFileLine( Spdr3dModel& model, FILE *fp ) {
         printf( "Operation model found: %s", &cpLine[iOperation] );
 
         Spdr3dOperation operation;
-        operation.addSpdrDates( &cpLine[iFactStart], &cpLine[iFactFin], &cpLine[iAsapStart], &cpLine[iAsapFin] );
-        parseOperation( operation, &cpLine[iOperation] );
+        operation.parseSpdrDates( &cpLine[iFactStart], &cpLine[iFactFin], &cpLine[iAsapStart], &cpLine[iAsapFin] );
+        parseOperationModel( operation, &cpLine[iOperation] );
         model.add( operation );
     }
     free(cpLine);
@@ -237,6 +237,7 @@ static int getValuesByColumnPos( char *cpLine, int *ipOperation, int *ipFactStar
     return 0;
 }
 
+
 static int parseFile( Spdr3dModel& model, const char *cpFile ) {
 
     //char caText[] = "<object><facet><point> 1, 2, 3</point><point> 4, 5, 6</point><point>7, 8, 9</point><point>10, 11.234234, 12 </point></facet></object>";
@@ -262,7 +263,7 @@ static int parseFile( Spdr3dModel& model, const char *cpFile ) {
 }
 
 
-static int parseOperation( Spdr3dOperation& operation, char *cpText ) {
+static int parseOperationModel( Spdr3dOperation& operation, char *cpText ) {
 
     int iStatus, iObjectStart, iObjectEnd, iFacetStart, iFacetEnd, iPointStart, iPointEnd;
 
@@ -331,7 +332,7 @@ int main( int argc, char* argv[] ) {
 
     parseFile( model, argv[1] );
 
-    Spdr3dModel::display( model, argc, argv );
+    model.display( argc, argv );
     
     return 0;
 }

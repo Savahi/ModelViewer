@@ -66,18 +66,26 @@ class Spdr3dOperation {
 	public:
 		std::vector<Spdr3dObject> mObjects; 
 		
-		struct tm tmFactStart, tmFactFin, tmAsapStart, tmAsapFin;
-		bool bTm;
+		tm tmActualStart, tmActualFinish, tmAsapStart, tmAsapFinish;
+		time_t mActualStart, mActualFinish, mAsapStart, mAsapFinish;
+		bool bDatesInitialized;
+
+		int iProgress;
 
 		int add( Spdr3dObject& object ) {
 			this->mObjects.push_back( object );
 			return 0;
 		}
 
-		int addSpdrDates( char *cpFactStart, char *cpFactFin, char *cpAsapStart, char *cpAsapFin );
+		int setProgress( int iProgress ) {
+			this->iProgress == iProgress;
+			return 0;
+		}
 
-		Spdr3dOperation() {
-			this->bTm = false; // std::cout << "Constructor for Spdr3dOperation\n";
+		int parseSpdrDates( char *cpActualStart, char *cpActualFinish, char *cpAsapStart, char *cpAsapFinish );
+
+		Spdr3dOperation() : bDatesInitialized(false), iProgress(100) {
+			; // std::cout << "Constructor for Spdr3dOperation\n";
 		}
 
 		~Spdr3dOperation() {
@@ -105,6 +113,8 @@ class Spdr3dModel {
 		~Spdr3dModel() {
 			; // std::cout << "Destructor for Spdr3dModel\n";
 		}
+
+		void display( int argc, char* argv[] );
 		
 		static void display( Spdr3dModel& model, int argc, char* argv[] );
 };
