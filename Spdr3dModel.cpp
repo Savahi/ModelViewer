@@ -17,6 +17,8 @@ static void displayKeys( int key, int x, int y );
 static void displayMouse ( int button, int state, int x, int y );
 static void displayReshape( GLsizei width, GLsizei height );
 
+static GLsizei _windowWidth, _windowHeight;
+
 static float f_ModelW, f_ModelL, f_ModelH, f_ModelMinX, f_ModelMaxX, f_ModelMinY, f_ModelMaxY, f_ModelMinZ, f_ModelMaxZ;
 static int i_ModelRotateX, i_ModelRotateY;
 static Spdr3dModel *o_Model;
@@ -118,25 +120,27 @@ void Spdr3dModel::display( int argc, char* argv[] ) {
 
 static void displayReshape( GLsizei width, GLsizei height ) {
 
-  if( width > height ) {
-    width = height;
-  } else {
-    height = width;
-  }
+	if( width > height ) {
+		width = height;
+	} else {
+		height = width;
+	}
 
-   // Set the viewport to cover the new window
-  glViewport(0, 0, width, height);
+	// Set the viewport to cover the new window
+	glViewport(0, 0, width, height);
 
-  glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
-  glLoadIdentity();             // Reset
+	glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
+	glLoadIdentity();             // Reset
 
-  float fMarginX = f_ModelW*1.0;
-  float fMarginY = f_ModelH*1.0;
-  float fMarginZ = f_ModelL*1.0;
-  glOrtho( f_ModelMinX-fMarginX, f_ModelMaxX+fMarginX, f_ModelMinY-fMarginY, f_ModelMaxY+fMarginY, f_ModelMinZ-fMarginZ, f_ModelMaxZ+fMarginZ );
-  //std::cout << "f_ModelMinX=" << f_ModelMinX <<", f_ModelMaxX=" << f_ModelMaxX;
-  //std::cout << ", f_ModelMinY=" << f_ModelMinY << ", f_ModelMaxY=" << f_ModelMaxY;
-  //std::cout << ", f_ModelMinZ=" << f_ModelMinZ << ", f_ModelMaxZ=" << f_ModelMaxZ <<"\n";
+	float fMarginX = f_ModelW*1.0;
+	float fMarginY = f_ModelH*1.0;
+	float fMarginZ = f_ModelL*1.0;
+	glOrtho( f_ModelMinX-fMarginX, f_ModelMaxX+fMarginX, f_ModelMinY-fMarginY, f_ModelMaxY+fMarginY, f_ModelMinZ-fMarginZ, f_ModelMaxZ+fMarginZ );
+	//std::cout << "f_ModelMinX=" << f_ModelMinX <<", f_ModelMaxX=" << f_ModelMaxX;
+	//std::cout << ", f_ModelMinY=" << f_ModelMinY << ", f_ModelMaxY=" << f_ModelMaxY;
+	//std::cout << ", f_ModelMinZ=" << f_ModelMinZ << ", f_ModelMaxZ=" << f_ModelMaxZ <<"\n";
+	_windowWidth = width;
+	_windowHeight = height;
 }
 
 
@@ -187,7 +191,7 @@ static void displayFunc( void ) {
     }	
 
 	glPopMatrix();
-	glFlush();
+	//glFlush();
 	glutSwapBuffers(); 
 }
 
@@ -281,11 +285,89 @@ static void displayKeys( int key, int x, int y ) {
 }
 
 static void displayMouse ( int button, int state, int x, int y ) {
-  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN ) 
-  { 
-     //store the x,y value where the click happened
-     puts("The left mouse button has been clicked!");
-  }	
+	if( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN ) { 
+		double objx, objy, objz;
+		double modelview[16], projection[16];
+		int viewport[4];
+		float z;
+
+
+		// get the modelview matrix		
+		glGetDoublev( GL_MODELVIEW_MATRIX, modelview );
+		// get the projection matrix
+		glGetDoublev( GL_PROJECTION_MATRIX, projection );
+		// get the viewport		
+		glGetIntegerv( GL_VIEWPORT, viewport );
+		// Read the window z coordinate (the z value on that point in unit cube)		
+		glReadPixels( x, viewport[3]-y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z );
+		// Unproject the window coordinates to find the world coordinates.
+		gluUnProject( x, viewport[3]-y, z, modelview, projection, viewport, &objx, &objy, &objz ); 
+
+		std::cout << objx << " , " << objy << " , " << objz << "\n";
+
+
+		for( std::vector<Spdr3dOperation>::iterator  op = o_Model->mOperations.begin() ; op != o_Model->mOperations.end() ; ++op ) {
+		    double minX, maxX, minY, maxY, minZ, maxZ;
+		    bool first=true;
+		    for( std::vector<Spdr3dObject>::iterator ob = (*op).mObjects.begin() ; ob != (*op).mObjects.end() ; ++ob ) {
+			    for( std::vector<Spdr3dFacet>::iterator fa = (*ob).mFacets.begin() ; fa != (*ob).mFacets.end() ; ++fa ) {	
+				    for( std::vector<Spdr3dVertex>::iterator ve = (*fa).mVertices.begin() ; ve != (*fa).mVertices.end() ; ++ve ) {
+				    	if( first ) {
+				    		minX = maxX = ve->mX;
+				    		minY = maxY = ve->mY;
+				    		minZ = maxZ = ve->mZ;
+				    		first = false;
+				    	} else {
+				    		if( ve->mX < minX) { minX = ve->mX; }
+				    		if( ve->mX > maxX ) { maxX = ve->mX; }
+				    		if( ve->mY < minY ) { minY = ve->mY; }
+				    		if( ve->mY > maxY ) { maxY = ve->mY; }
+				    		if( ve->mZ < minZ ) { minZ = ve->mZ; }
+				    		if( ve->mZ > maxZ ) { maxZ = ve->mZ; }
+				    	}
+				    }
+				}
+			}
+			if( !first ) {
+				if( !(objx < minX) && !(objx > maxX) && !(objy < minY) && !(objy > maxY) && !(objz < minZ) && !(objz > maxZ) ) {
+					char text[100];
+
+					if( t_ModelTime < op->tActualStart ) {
+						sprintf( text, "This operation is to start at: %ld", op->tActualStart );
+					} else if ( t_ModelTime > op->tActualFinish ) {
+						sprintf( text, "This operation haas been finished at: %ld", op->tActualFinish );
+					} else {
+						int pct = int( ( (t_ModelTime - op->tActualStart)*100 ) / (op->tActualFinish - op->tActualStart) );  
+						sprintf( text, "This operation is under way now, %d%% done.", pct );
+					}
+					glColor3f( 1.0f, 1.0f, 1.0f );
+
+					glMatrixMode( GL_PROJECTION );
+					glPushMatrix();
+					glLoadIdentity();
+					gluOrtho2D( 0, _windowWidth, 0, _windowHeight );
+					glMatrixMode( GL_MODELVIEW );
+					glPushMatrix();
+					glLoadIdentity();
+					
+					glRasterPos2i( 10, 10 );
+					for( int i = 0 ; text[i] != '\x0' ; ++i ) {
+					    glutBitmapCharacter( GLUT_BITMAP_TIMES_ROMAN_24, text[i] );
+					}
+
+					glPopMatrix();
+					glMatrixMode( GL_PROJECTION );
+					glPopMatrix();
+					glMatrixMode( GL_MODELVIEW );
+					
+					glutSwapBuffers();
+					break;
+					//glutPostRedisplay();
+				}
+			}
+		}
+
+	}	
 }
 
 
