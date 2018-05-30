@@ -14,6 +14,7 @@ static void displayAxis( void );
 static void displayFacet( Spdr3dFacet& facet, float fProgress=100 );
 
 static void displayKeys( int key, int x, int y );
+static void displayMouse ( int button, int state, int x, int y );
 static void displayReshape( GLsizei width, GLsizei height );
 
 static float f_ModelW, f_ModelL, f_ModelH, f_ModelMinX, f_ModelMaxX, f_ModelMinY, f_ModelMaxY, f_ModelMinZ, f_ModelMaxZ;
@@ -23,19 +24,25 @@ static time_t t_TimeNow;
 static time_t t_ModelTime;
 static time_t t_ModelStart, t_ModelFinish; 
 
+static int i_DateScaleRate = 50;
+
 static void displayInitializer( void ) {
 
   	i_ModelRotateX = 15;
   	i_ModelRotateY = 15;
   	t_TimeNow = t_ModelTime = time(0);
-	t_ModelStart = t_ModelFinish = t_ModelTime;
+  	t_ModelStart = t_ModelFinish = -1.0;
 	
 	bool bFirst = true;	
 	for( std::vector<Spdr3dOperation>::iterator  op = o_Model->mOperations.begin() ; op != o_Model->mOperations.end() ; ++op ) {
-		if( op->tActualStart < t_ModelStart ) {
+		if( t_ModelStart < 0.0 ) { 
 			t_ModelStart = op->tActualStart;
-		}
-		if( op->tActualFinish > t_ModelStart ) {
+		} else if( op->tActualStart < t_ModelStart ) {
+			t_ModelStart = op->tActualStart;
+		} 
+		if( t_ModelFinish < 0.0 ) {
+			t_ModelFinish = op->tActualFinish;			
+		} else if ( op->tActualFinish > t_ModelFinish ) {
 			t_ModelFinish = op->tActualFinish;
 		}
 	    for( std::vector<Spdr3dObject>::iterator ob = (*op).mObjects.begin() ; ob != (*op).mObjects.end() ; ++ob ) {
@@ -92,7 +99,7 @@ void Spdr3dModel::display( int argc, char* argv[] ) {
 
 	glutInitWindowSize(640, 480);   // Set the window's initial width & height
 	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner  
-	glutCreateWindow("How the Building has being Built...");
+	glutCreateWindow("How the Building has been being Built...");
 
 	glEnable( GL_DEPTH_TEST ); // Enable Z-buffer depth test
 	glEnable( GL_BLEND );
@@ -101,10 +108,35 @@ void Spdr3dModel::display( int argc, char* argv[] ) {
 	// Callback functions
 	glutDisplayFunc(displayFunc);
 	glutSpecialFunc(displayKeys);
+	glutMouseFunc(displayMouse);
 	glutReshapeFunc(displayReshape);       // Register callback handler for window re-size event
 
 	//  Pass control to GLUT for events
 	glutMainLoop();
+}
+
+
+static void displayReshape( GLsizei width, GLsizei height ) {
+
+  if( width > height ) {
+    width = height;
+  } else {
+    height = width;
+  }
+
+   // Set the viewport to cover the new window
+  glViewport(0, 0, width, height);
+
+  glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
+  glLoadIdentity();             // Reset
+
+  float fMarginX = f_ModelW*1.0;
+  float fMarginY = f_ModelH*1.0;
+  float fMarginZ = f_ModelL*1.0;
+  glOrtho( f_ModelMinX-fMarginX, f_ModelMaxX+fMarginX, f_ModelMinY-fMarginY, f_ModelMaxY+fMarginY, f_ModelMinZ-fMarginZ, f_ModelMaxZ+fMarginZ );
+  //std::cout << "f_ModelMinX=" << f_ModelMinX <<", f_ModelMaxX=" << f_ModelMaxX;
+  //std::cout << ", f_ModelMinY=" << f_ModelMinY << ", f_ModelMaxY=" << f_ModelMaxY;
+  //std::cout << ", f_ModelMinZ=" << f_ModelMinZ << ", f_ModelMaxZ=" << f_ModelMaxZ <<"\n";
 }
 
 
@@ -161,13 +193,39 @@ static void displayFunc( void ) {
 
 
 static void displayFacet( Spdr3dFacet& facet, float fProgress ) {
+	// Facet
 	glBegin(GL_POLYGON);
 	glColor4f( 1.0f, 1.0f, 1.0f, fProgress );
     for( std::vector<Spdr3dVertex>::iterator ve = facet.mVertices.begin() ; ve != facet.mVertices.end() ; ++ve ) {
-    	// std::cout << "x=" << (*ve).mX << ", y=" << (*ve).mY << ", z=" << (*ve).mZ << "\n";
-		glVertex3f(  (*ve).mX, (*ve).mY, (*ve).mZ );
+		glVertex3f( ve->mX, ve->mY, ve->mZ );
     }
 	glEnd();
+
+	// Carcas
+	glBegin(GL_LINES);
+	glEnable( GL_LINE_SMOOTH );
+	glLineWidth( 4.0 );
+	glColor3f( 1.0, 1.0, 1.0 );     
+	bool firstVertex = false;
+	bool prevVertex = false;
+	double prevX, prevY, prevZ;
+	double firstX, firstY, firstZ;
+    for( std::vector<Spdr3dVertex>::iterator ve = facet.mVertices.begin() ; ve != facet.mVertices.end() ; ++ve ) {
+		if( !firstVertex ) {
+			firstX = ve->mX; firstY = ve->mY; firstZ = ve->mZ;
+			firstVertex = true;
+		} else {
+			glVertex3f( ve->mX, ve->mY, ve->mZ );
+			glVertex3f( prevX, prevY, prevZ );
+		}
+		prevX = ve->mX; prevY = ve->mY; prevZ = ve->mZ;
+		prevVertex = true;
+	}
+	if( firstVertex && prevVertex ) {
+		glVertex3f( prevX, prevY, prevZ );
+		glVertex3f( firstX, firstY, firstZ );
+	}
+	glEnd();	
 }
 
 static void displayAxis( void ) {
@@ -205,7 +263,7 @@ static void displayKeys( int key, int x, int y ) {
 			break;
 		case GLUT_KEY_PAGE_UP:
 			if( t_ModelTime < t_ModelFinish ) {
-				t_ModelTime += (t_ModelFinish - t_ModelStart)/20;
+				t_ModelTime += (t_ModelFinish - t_ModelStart)/i_DateScaleRate;
 			} else if( t_ModelTime < t_TimeNow ) {
 				t_ModelTime = t_TimeNow;
 			}
@@ -214,7 +272,7 @@ static void displayKeys( int key, int x, int y ) {
 			if( t_ModelTime > t_ModelFinish ) {
 				t_ModelTime = t_ModelFinish;
 			} else if( t_ModelTime > t_ModelStart ) {
-				t_ModelTime -= (t_ModelFinish - t_ModelStart)/20;
+				t_ModelTime -= (t_ModelFinish - t_ModelStart)/i_DateScaleRate;
 			}
 			break;
 	} 
@@ -222,28 +280,12 @@ static void displayKeys( int key, int x, int y ) {
   glutPostRedisplay();
 }
 
-
-static void displayReshape( GLsizei width, GLsizei height ) {
-
-  if( width > height ) {
-    width = height;
-  } else {
-    height = width;
-  }
-
-   // Set the viewport to cover the new window
-  glViewport(0, 0, width, height);
-
-  glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
-  glLoadIdentity();             // Reset
-
-  float fMarginX = f_ModelW*1.0;
-  float fMarginY = f_ModelH*1.0;
-  float fMarginZ = f_ModelL*1.0;
-  glOrtho( f_ModelMinX-fMarginX, f_ModelMaxX+fMarginX, f_ModelMinY-fMarginY, f_ModelMaxY+fMarginY, f_ModelMinZ-fMarginZ, f_ModelMaxZ+fMarginZ );
-  //std::cout << "f_ModelMinX=" << f_ModelMinX <<", f_ModelMaxX=" << f_ModelMaxX;
-  //std::cout << ", f_ModelMinY=" << f_ModelMinY << ", f_ModelMaxY=" << f_ModelMaxY;
-  //std::cout << ", f_ModelMinZ=" << f_ModelMinZ << ", f_ModelMaxZ=" << f_ModelMaxZ <<"\n";
+static void displayMouse ( int button, int state, int x, int y ) {
+  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN ) 
+  { 
+     //store the x,y value where the click happened
+     puts("The left mouse button has been clicked!");
+  }	
 }
 
 

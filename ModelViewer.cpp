@@ -4,7 +4,6 @@
 #include "Spdr3dModel.hpp"
 
 #define SPDRMV_MAX_TAG_NAME 40
-#define SPDRMV_MAX_POINT_BUFFER 80
 
 #define SPDRMV_READ_BUFFER 512
 
@@ -264,11 +263,11 @@ static int parseFile( Spdr3dModel& model, const char *cpFile ) {
 
 static int parseOperationModel( Spdr3dOperation& operation, char *cpText ) {
 
-    int iStatus, iObjectStart, iObjectEnd, iFacetStart, iFacetEnd, iPointStart, iPointEnd;
-
-    int iPointIndex, nPointsBuffered;
-    char caPointBuffer[SPDRMV_MAX_POINT_BUFFER];
+    int iStatus, iObjectStart, iObjectEnd, iFacetStart, iFacetEnd, iPointStart, iPointEnd, iBoxStart, iBoxEnd;
+    int iIndex, nBuffered;
+    char caBuffer[SPDRMV_READ_BUFFER];
     float fX, fY, fZ;
+    float xNear, yNear, zNear, xFar, yFar, zFar;
 
     iObjectEnd = 0;
     while(1) {
@@ -293,24 +292,77 @@ static int parseOperationModel( Spdr3dOperation& operation, char *cpText ) {
                     break;
                 }
 
-                for( iPointIndex = iPointStart, nPointsBuffered = 0 ; iPointIndex <= iPointEnd && nPointsBuffered < SPDRMV_MAX_POINT_BUFFER ; ) {
-                    if( cpText[iPointIndex] == ',' ) {
-                        caPointBuffer[ nPointsBuffered ] = ' ';
+                for( iIndex = iPointStart, nBuffered = 0 ; iIndex <= iPointEnd && nBuffered < SPDRMV_READ_BUFFER ; ) {
+                    if( cpText[iIndex] == ',' ) {
+                        caBuffer[ nBuffered ] = ' ';
                     } else {
-                        caPointBuffer[ nPointsBuffered ] = cpText[iPointIndex];
+                        caBuffer[ nBuffered ] = cpText[iIndex];
                     }
-                    iPointIndex++;
-                    nPointsBuffered++;
+                    iIndex++;
+                    nBuffered++;
                 }
-                caPointBuffer[ nPointsBuffered ] = '\x0';
-                iStatus = sscanf( caPointBuffer, " %f %f %f", &fX, &fY, &fZ );
+                caBuffer[ nBuffered ] = '\x0';
+                iStatus = sscanf( caBuffer, " %f %f %f", &fX, &fY, &fZ );
                 if( iStatus == 3 ) {
                     Spdr3dVertex vertex( fX, fY, fZ );
                     facet.add(vertex);
-                    printf("Added vertex: %f, %f, %f\n", fX, fY, fZ );
                 }
             }
             object.add(facet);
+        }
+
+        iBoxEnd = iObjectStart;
+        while(1) {
+            iStatus = findTagContent( cpText, "box", iBoxEnd, iObjectEnd, &iBoxStart, &iBoxEnd );
+            if( iStatus == 0 ) {
+                break;
+            }
+
+            for( iIndex = iBoxStart, nBuffered = 0 ; iIndex <= iBoxEnd && nBuffered < SPDRMV_READ_BUFFER ; ) {
+                if( cpText[iIndex] == ',' ) {
+                    caBuffer[ nBuffered ] = ' ';
+                } else {
+                    caBuffer[ nBuffered ] = cpText[iIndex];
+                }
+                iIndex++;
+                nBuffered++;
+            }
+            caBuffer[ nBuffered ] = '\x0'; 
+            iStatus = sscanf( caBuffer, " %f %f %f %f %f %f", &xNear, &yNear, &zNear, &xFar, &yFar, &zFar );
+            if( iStatus == 6 ) {
+                Spdr3dFacet facet;
+                Spdr3dVertex vertex;
+                vertex.setXYZ( xNear, yNear, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yNear, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yFar, zNear ); facet.add(vertex);
+                vertex.setXYZ( xNear, yFar, zNear ); facet.add(vertex);
+                object.add(facet);
+                vertex.setXYZ( xNear, yNear, zFar ); facet.add(vertex);
+                vertex.setXYZ( xFar, yNear, zFar ); facet.add(vertex);
+                vertex.setXYZ( xFar, yFar, zFar ); facet.add(vertex);
+                vertex.setXYZ( xNear, yFar, zFar ); facet.add(vertex);
+                object.add(facet);
+                vertex.setXYZ( xNear, yNear, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yNear, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yNear, zFar ); facet.add(vertex);
+                vertex.setXYZ( xNear, yNear, zFar ); facet.add(vertex);
+                object.add(facet);
+                vertex.setXYZ( xNear, yFar, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yFar, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yFar, zFar ); facet.add(vertex);
+                vertex.setXYZ( xNear, yFar, zFar ); facet.add(vertex);
+                object.add(facet);
+                vertex.setXYZ( xNear, yNear, zNear ); facet.add(vertex);
+                vertex.setXYZ( xNear, yFar, zNear ); facet.add(vertex);
+                vertex.setXYZ( xNear, yFar, zFar ); facet.add(vertex);
+                vertex.setXYZ( xNear, yNear, zFar ); facet.add(vertex);
+                object.add(facet);
+                vertex.setXYZ( xFar, yNear, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yFar, zNear ); facet.add(vertex);
+                vertex.setXYZ( xFar, yFar, zFar ); facet.add(vertex);
+                vertex.setXYZ( xFar, yNear, zFar ); facet.add(vertex);
+                object.add(facet);
+            }
         }
         operation.add(object);
     }
